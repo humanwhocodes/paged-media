@@ -179,7 +179,12 @@ export async function openFixture(
 
 	if (inline) {
 		await page.goto(fixtureURL("blank.html"), { waitUntil: "load" });
-		await page.setContent(nameOrHtml, { waitUntil: "load" });
+		// Use the bundled test fonts so rendering is machine-independent.
+		const html = nameOrHtml.replace(
+			/<head>/i,
+			`<head><link rel="stylesheet" href="${fixtureURL("fonts.css")}">`,
+		);
+		await page.setContent(html, { waitUntil: "load" });
 	} else {
 		await page.goto(fixtureURL(nameOrHtml), { waitUntil: "load" });
 	}

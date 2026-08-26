@@ -150,6 +150,14 @@ npm run render:pdf -- input.html output.pdf
 
 Integration tests render fixtures in `tests/fixtures` with Puppeteer, inspect the generated DOM, and read the printed PDFs back with pdf.js to verify page sizes and text.
 
+Visual regression tests (`tests/screenshots.test.ts`) screenshot every page of each fixture and compare them pixel-by-pixel against the baselines committed in `tests/screenshots/baseline/<platform>/`. The current screenshots are always written to `tests/screenshots/current/` so you can look at what was rendered, and any mismatch writes a highlighted diff image to `tests/screenshots/diff/` and fails the test. After an intentional rendering change, refresh the baselines with:
+
+```shell
+npm run test:screenshots:update
+```
+
+Fixtures use bundled DejaVu fonts (`tests/fixtures/fonts.css`) rather than system fonts, so rendering is the same on every machine; baselines are still recorded per platform because rasterization differs between operating systems, and on CI the screenshot tests are skipped on platforms without baselines.
+
 ## License
 
 Copyright 2026 Nicholas C. Zakas

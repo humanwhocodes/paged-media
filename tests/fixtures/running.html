@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
 <title>Running elements</title>
 <style>
 @page {
@@ -10,7 +11,7 @@
 	@top-center { content: element(header); }
 	@bottom-center { content: element(footer, last); }
 }
-body { margin: 0; font: 14px/20px monospace; }
+body { margin: 0; font: 14px/20px "Test Mono"; }
 .hdr { position: running(header); font-weight: bold; }
 .ftr { position: running(footer); }
 .page { break-before: page; }

@@ -1,0 +1,8 @@
+/* Bundled test fonts (DejaVu, see fonts/LICENSE) so rendering does not depend on system fonts. */
+@font-face { font-family: "Test Serif"; src: url("fonts/DejaVuSerif.ttf"); font-weight: normal; }
+@font-face { font-family: "Test Serif"; src: url("fonts/DejaVuSerif-Bold.ttf"); font-weight: bold; }
+@font-face { font-family: "Test Sans"; src: url("fonts/DejaVuSans.ttf"); font-weight: normal; }
+@font-face { font-family: "Test Sans"; src: url("fonts/DejaVuSans-Bold.ttf"); font-weight: bold; }
+@font-face { font-family: "Test Mono"; src: url("fonts/DejaVuSansMono.ttf"); font-weight: normal; }
+@font-face { font-family: "Test Mono"; src: url("fonts/DejaVuSansMono-Bold.ttf"); font-weight: bold; }
+html { font-family: "Test Serif"; }

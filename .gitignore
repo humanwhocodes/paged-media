@@ -70,3 +70,7 @@ tests/fixtures/typescript-project/index.js
 dist/env.js
 
 tmp
+
+# screenshot test output (baselines are committed)
+tests/screenshots/current
+tests/screenshots/diff

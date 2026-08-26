@@ -59,7 +59,9 @@
     "test:watch": "vitest",
     "test:attw": "attw --pack --profile esm-only",
     "probe:support": "node scripts/probe-support.js",
-    "render:pdf": "node scripts/render-pdf.js"
+    "render:pdf": "node scripts/render-pdf.js",
+    "test:screenshots": "vitest run tests/screenshots.test.ts",
+    "test:screenshots:update": "UPDATE_SCREENSHOTS=1 vitest run tests/screenshots.test.ts"
   },
   "repository": {
     "type": "git",
@@ -82,11 +84,15 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.3.0",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
     "lint-staged": "17.3.0",
     "pdfjs-dist": "^6.2.108",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.9.6",
     "puppeteer": "^25.9.0",
     "typescript": "^6.0.3",

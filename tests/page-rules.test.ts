@@ -139,8 +139,8 @@ describe("margin boxes", () => {
 			`<!doctype html><html><head><style>
 				@page {
 					size: 400px 400px; margin: 50px;
-					@top-left { content: "Left"; font: 10px monospace; }
-					@top-right { content: "Right text"; font: 10px monospace; }
+					@top-left { content: "Left"; font: 10px "Test Mono"; }
+					@top-right { content: "Right text"; font: 10px "Test Mono"; }
 					@bottom-left { content: "Solo"; }
 				}
 			</style></head><body><p>x</p></body></html>`,
@@ -239,7 +239,7 @@ describe("named pages and selectors", () => {
 			[288, 432],
 		]);
 		expect(pdf[1].text).toContain("Wide one");
-		expect(pdf[2].text).toContain("chapter-first");
+		expect(pdf[2].text.replace(/\s+/g, "")).toContain("chapter-first");
 		await page.close();
 	});
 

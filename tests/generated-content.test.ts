@@ -204,7 +204,7 @@ describe("footnotes", () => {
 		const page = await openFixture(
 			`<!doctype html><html><head><style>
 				@page { size: 4in 4in; margin: 0.5in; }
-				body { margin: 0; font: 14px/20px monospace; }
+				body { margin: 0; font: 14px/20px "Test Mono"; }
 				p { margin: 0; }
 				.fn { float: footnote; }
 				.tall { height: 240px; }

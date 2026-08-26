@@ -122,7 +122,7 @@ describe("pagination", () => {
 		const page = await openFixture(
 			`<!doctype html><html><head><style>
 				@page { size: 4in 4in; margin: 0.5in; }
-				body { margin: 0; font: 14px/20px monospace; }
+				body { margin: 0; font: 14px/20px "Test Mono"; }
 				p { margin: 0; }
 				.tall { height: 180px; }
 				#lines { orphans: 2; widows: 3; }
@@ -248,7 +248,7 @@ describe("pagination", () => {
 		const page = await openFixture(
 			`<!doctype html><html><head><style>
 				@page { size: 4in 4in; margin: 0.5in; }
-				body { margin: 0; font: 14px/20px monospace; }
+				body { margin: 0; font: 14px/20px "Test Mono"; }
 				p { margin: 0; }
 			</style></head><body><p id="long">${words}</p></body></html>`,
 			true,
@@ -285,7 +285,7 @@ describe("pagination", () => {
 		const page = await openFixture(
 			`<!doctype html><html><head><style>
 				@page { size: 4in 4in; margin: 0.5in; }
-				body { margin: 0; font: 14px/20px monospace; }
+				body { margin: 0; font: 14px/20px "Test Mono"; }
 				p { margin: 0; }
 				.tall { height: 200px; }
 				img { display: block; width: 100px; height: 100px; }

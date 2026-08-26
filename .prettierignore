@@ -2,3 +2,4 @@ dist
 CHANGELOG.md
 .prettierignore
 tests/fixtures
+tests/screenshots
