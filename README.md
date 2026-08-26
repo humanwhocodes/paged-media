@@ -158,6 +158,10 @@ npm run test:screenshots:update
 
 Fixtures use bundled DejaVu fonts (`tests/fixtures/fonts.css`) rather than system fonts, so rendering is the same on every machine; baselines are still recorded per platform because rasterization differs between operating systems, and on CI the screenshot tests are skipped on platforms without baselines.
 
+## Acknowledgements
+
+This project is inspired by [PagedJS](https://pagedjs.org), the original CSS Paged Media polyfill. None of the code in this project is from PagedJS.
+
 ## License
 
 Copyright 2026 Nicholas C. Zakas
