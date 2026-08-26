@@ -287,14 +287,18 @@ describe("cross references and leaders", () => {
 
 		const info = await page.evaluate(() => {
 			const link = document.querySelector<HTMLElement>(".pm-page #l1")!;
+			const containerWidth = link.parentElement!.getBoundingClientRect().width;
 			const width = parseFloat(
 				link.style.getPropertyValue("--pm-leader-width-0"),
 			);
 			return {
+				containerWidth,
 				width,
 			};
 		});
 		expect(info.width).toBeGreaterThan(100);
+		expect(info.width).toBeLessThanOrEqual(info.containerWidth);
+		expect(info.width / info.containerWidth).toBeGreaterThan(0.3);
 		await page.close();
 
 		const printed = await openFixture("cross-refs.html");
