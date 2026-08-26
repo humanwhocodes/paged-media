@@ -298,7 +298,7 @@ describe("cross references and leaders", () => {
 		});
 		expect(info.width).toBeGreaterThan(100);
 		expect(info.width).toBeLessThanOrEqual(info.containerWidth);
-		// Ensure the leader occupies a meaningful portion of the line.
+		// Ensure the leader occupies a meaningful portion of the container width.
 		expect(info.width / info.containerWidth).toBeGreaterThan(0.3);
 		await page.close();
 
