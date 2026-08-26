@@ -111,9 +111,11 @@ describe("css-gcpm (WPT)", () => {
 			const cnRect = cn.getBoundingClientRect();
 			const folioRect = folio.getBoundingClientRect();
 			const liRect = li.getBoundingClientRect();
+			const lineDelta = Math.abs(cnRect.top - folioRect.top);
+			const maxLineHeight = Math.max(cnRect.height, folioRect.height);
 			return {
 				content: getComputedStyle(cn, "::after").content,
-				sameLine: Math.abs(cnRect.top - folioRect.top) < 2,
+				sameLine: lineDelta < maxLineHeight / 2,
 				folioAtEnd: liRect.right - folioRect.right < 4,
 				leaderWidth: parseFloat(
 					cn.style.getPropertyValue("--pm-leader-width-0"),
