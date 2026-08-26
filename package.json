@@ -1,0 +1,69 @@
+{
+  "name": "@humanwhocodes/replace-me",
+  "version": "0.0.0",
+  "description": "Replace me",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHooks": {
+    "pre-commit": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "!(*.js|*.ts)": [
+      "prettier --write --ignore-unknown"
+    ]
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/nzakas"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/ tests/",
+    "fmt": "prettier --write .",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:attw": "attw --pack --profile esm-only"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humanwhocodes/replace-me.git"
+  },
+  "keywords": [],
+  "author": "Nicholas C. Zakas",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.3.0",
+    "eslint": "^10.9.1",
+    "lint-staged": "17.3.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.68.0",
+    "vitest": "^4.1.11",
+    "yorkie": "2.0.0"
+  },
+  "dependencies": {}
+}
