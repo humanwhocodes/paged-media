@@ -1,6 +1,6 @@
 {
   "name": "@humanwhocodes/paged-media",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "CSS paged media polyfill for browsers.",
   "type": "module",
   "main": "dist/index.js",
