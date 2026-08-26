@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Margin boxes</title>
+<style>
+@page {
+	size: 6in 8in;
+	margin: 1in 0.75in 1.25in 0.5in;
+	@top-left-corner { content: "TLC"; }
+	@top-left { content: "TL"; }
+	@top-center { content: "TC"; }
+	@top-right { content: "TR"; }
+	@top-right-corner { content: "TRC"; }
+	@left-top { content: "LT"; }
+	@left-middle { content: "LM"; }
+	@left-bottom { content: "LB"; }
+	@right-top { content: "RT"; }
+	@right-middle { content: "RM"; }
+	@right-bottom { content: "RB"; }
+	@bottom-left-corner { content: "BLC"; }
+	@bottom-left { content: "BL"; }
+	@bottom-center { content: "Page " counter(page) " of " counter(pages); }
+	@bottom-right { content: "BR"; }
+	@bottom-right-corner { content: "BRC"; }
+}
+@page :first {
+	@top-center { content: "FIRST"; }
+	@top-left { content: none; }
+}
+@page :left {
+	@top-right { content: "LEFTPAGE"; }
+}
+@page :right {
+	@top-right { content: "RIGHTPAGE"; }
+}
+@page :nth(3) {
+	@bottom-left { content: "THIRD"; }
+}
+h1 { break-before: page; }
+</style>
+</head>
+<body>
+<h1>One</h1><p>Text one</p>
+<h1>Two</h1><p>Text two</p>
+<h1>Three</h1><p>Text three</p>
+</body>
+</html>

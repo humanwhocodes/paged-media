@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Footnotes</title>
+<style>
+@page { size: 4in 4in; margin: 0.5in; counter-reset: footnote; @footnote { border-top: 1px solid black; padding-top: 4px; } }
+body { margin: 0; font: 14px/20px monospace; }
+p { margin: 0; }
+.fn { float: footnote; }
+.inline { footnote-display: inline; }
+.fn::footnote-call { content: "[" counter(footnote) "]"; color: red; }
+.fn::footnote-marker { font-weight: bold; }
+.tall { height: 120px; }
+.page { break-before: page; }
+</style>
+</head>
+<body>
+<p id="p1">Alpha<span class="fn">Note A</span> beta<span class="fn">Note B</span> gamma.</p>
+<div class="tall">filler</div>
+<p id="p2">Delta<span class="fn inline">Note C</span> epsilon<span class="fn inline">Note D</span>.</p>
+<p id="p3">Zeta<span class="fn">Note E</span> eta<span class="fn">Note F</span> theta.</p>
+<p class="page">Next page<span class="fn">Note G</span>.</p>
+</body>
+</html>

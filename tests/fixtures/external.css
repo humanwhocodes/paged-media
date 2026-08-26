@@ -1,0 +1,3 @@
+@import url("imported.css");
+@page { size: 4in 4in; margin: 0.5in; @top-center { content: "external"; } }
+p { color: green; string-set: x content(text); }

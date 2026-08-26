@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Named strings</title>
+<style>
+@page {
+	size: 4in 4in;
+	margin: 0.5in;
+	@top-left { content: string(title, first); }
+	@top-center { content: string(title, start); }
+	@top-right { content: string(title, last); }
+	@bottom-left { content: string(title, first-except); }
+	@bottom-center { content: string(author); }
+	@bottom-right { content: string(section); }
+}
+body { margin: 0; font: 14px/20px monospace; }
+p { margin: 0; }
+h1 { margin: 0; string-set: title content(text), author attr(data-author); }
+h2 { margin: 0; string-set: section "Sec " counter(sec) ": " content(text); counter-increment: sec; }
+h2::before { content: "> "; }
+.tall { height: 80px; }
+.page { break-before: page; }
+</style>
+</head>
+<body>
+<p>Preamble</p>
+<h1 data-author="Ada">Alpha</h1>
+<h2>One</h2>
+<h1 data-author="Bob">Beta</h1>
+<div class="tall">filler</div>
+<h1 data-author="Cy" class="page">Gamma</h1>
+<p>Text</p>
+<p class="page">No headings here</p>
+<p class="page">Still none</p>
+<h2 class="page">Two</h2>
+</body>
+</html>

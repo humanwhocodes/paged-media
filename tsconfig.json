@@ -1,10 +1,10 @@
 {
-  "files": ["src/index.ts"],
+  "files": ["src/index.ts", "src/browser.ts"],
   "compilerOptions": {
     "declaration": true,
     "strict": true,
     "target": "ES2022",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rootDir": "src",

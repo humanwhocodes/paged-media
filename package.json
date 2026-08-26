@@ -1,16 +1,27 @@
 {
-  "name": "@humanwhocodes/replace-me",
+  "name": "@humanwhocodes/paged-media",
   "version": "0.0.0",
-  "description": "Replace me",
+  "description": "CSS paged media polyfill for browsers.",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    "import": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/paged-media.js"
+    },
+    "./browser.min": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/paged-media.min.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -38,32 +49,49 @@
     "url": "https://github.com/sponsors/nzakas"
   },
   "scripts": {
-    "build": "tsc",
-    "lint": "eslint src/ tests/",
+    "build": "tsc && node scripts/build-bundle.js",
+    "build:bundle": "node scripts/build-bundle.js",
+    "lint": "eslint src/ tests/ scripts/ && tsc -p tsconfig.check.json",
     "fmt": "prettier --write .",
     "prepublishOnly": "npm run build",
+    "pretest": "npm run build:bundle",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:attw": "attw --pack --profile esm-only"
+    "test:attw": "attw --pack --profile esm-only",
+    "probe:support": "node scripts/probe-support.js",
+    "render:pdf": "node scripts/render-pdf.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/humanwhocodes/replace-me.git"
+    "url": "git+https://github.com/humanwhocodes/paged-media.git"
   },
-  "keywords": [],
+  "keywords": [
+    "css",
+    "paged media",
+    "print",
+    "pdf",
+    "polyfill",
+    "puppeteer",
+    "@page",
+    "footnotes",
+    "running headers"
+  ],
   "author": "Nicholas C. Zakas",
   "license": "Apache-2.0",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.3.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
+    "globals": "^17.11.0",
     "lint-staged": "17.3.0",
+    "pdfjs-dist": "^6.2.108",
     "prettier": "^3.9.6",
+    "puppeteer": "^25.9.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vitest": "^4.1.11",
     "yorkie": "2.0.0"
-  },
-  "dependencies": {}
+  }
 }

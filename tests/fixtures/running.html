@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Running elements</title>
+<style>
+@page {
+	size: 4in 4in;
+	margin: 0.75in 0.5in;
+	@top-center { content: element(header); }
+	@bottom-center { content: element(footer, last); }
+}
+body { margin: 0; font: 14px/20px monospace; }
+.hdr { position: running(header); font-weight: bold; }
+.ftr { position: running(footer); }
+.page { break-before: page; }
+</style>
+</head>
+<body>
+<div class="hdr">Header <em>One</em></div>
+<div class="ftr">Footer A</div>
+<p>Page one</p>
+<p class="page">Page two</p>
+<div class="hdr">Header Two</div>
+<div class="ftr">Footer B</div>
+<div class="ftr">Footer C</div>
+<p class="page">Page three</p>
+</body>
+</html>

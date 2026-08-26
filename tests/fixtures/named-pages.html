@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Named pages</title>
+<style>
+@page { size: 4in 6in; margin: 0.5in; @top-center { content: "default"; } }
+@page wide { size: 6in 4in; @top-center { content: "wide"; } }
+@page chapter { @top-center { content: "chapter"; } }
+@page chapter:first { @top-center { content: "chapter-first"; } }
+@page chapter:nth(2) { @top-center { content: "chapter-second"; } }
+@page :first { @bottom-center { content: "doc-first"; } }
+.wide { page: wide; }
+.chapter { page: chapter; }
+h1 { break-before: page; }
+</style>
+</head>
+<body>
+<p>Intro</p>
+<div class="wide"><p>Wide one</p></div>
+<div class="chapter">
+	<h1>Chapter</h1><p>Chapter one page one</p>
+	<h1>Chapter continued</h1><p>Chapter one page two</p>
+</div>
+<p>Outro</p>
+</body>
+</html>

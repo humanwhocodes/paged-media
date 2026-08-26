@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Breaks</title>
+<style>
+@page { size: 4in 4in; margin: 0.5in; }
+@page :blank { @top-center { content: "BLANK"; } }
+body { margin: 0; font: 14px/20px monospace; }
+p { margin: 0; }
+.page { break-before: page; }
+.right { break-before: right; }
+.left { break-before: left; }
+.after { break-after: page; }
+.avoid { break-inside: avoid; }
+.avoid-before { break-before: avoid; }
+.tall { height: 60px; }
+</style>
+</head>
+<body>
+<p id="a">A</p>
+<p id="b" class="page">B</p>
+<p id="c" class="right">C</p>
+<p id="d" class="left">D</p>
+<p id="e" class="after">E</p>
+<p id="f">F</p>
+<div id="filler"><p class="tall">1</p><p class="tall">2</p><p class="tall">3</p><p class="tall">4</p></div>
+<div id="keep" class="avoid"><p class="tall">K1</p><p class="tall">K2</p></div>
+<p id="g">G</p>
+<div id="filler2"><p class="tall">5</p><p class="tall">6</p><p class="tall">7</p></div>
+<p id="h" class="tall">H</p>
+<p id="i" class="avoid-before tall">I</p>
+</body>
+</html>

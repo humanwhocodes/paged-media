@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Split styles</title>
+<style>
+@page { size: 4in 4in; margin: 0.5in; }
+body { margin: 0; font: 14px/20px monospace; }
+p { margin: 0; }
+.box { border: 10px solid red; padding: 10px; }
+.clone { box-decoration-break: clone; }
+.tall { height: 200px; }
+</style>
+</head>
+<body>
+<div class="box" id="slice"><p class="tall">One</p><p class="tall">Two</p></div>
+<div class="box clone" id="clone"><p class="tall">Three</p><p class="tall">Four</p></div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cross references</title>
+<style>
+@page { size: 4in 4in; margin: 0.5in; }
+@page :first { counter-reset: page 10; }
+body { margin: 0; font: 14px/20px monospace; counter-reset: chapter; }
+p { margin: 0; }
+h1 { margin: 0; counter-increment: chapter; counter-reset: section; break-before: page; }
+h2 { margin: 0; counter-increment: section; }
+h2::before { content: counter(chapter) "." counter(section) " "; }
+.toc { display: block; }
+.toc a { display: block; }
+.toc a::after { content: leader(dotted) target-counter(attr(href), page); }
+#ref1::after { content: " -> " target-counter(attr(href), page, lower-roman); }
+#ref2::after { content: " -> " target-text(attr(href)); }
+#ref3::after { content: " -> " target-counters(attr(href), section, ".") " / " target-counter(attr(href), chapter); }
+#ref4::after { content: " -> " target-text("#two", before); }
+#here::after { content: " [p" counter(page) "/" counter(pages) "]"; }
+</style>
+</head>
+<body>
+<div class="toc">
+<a href="#one" id="l1">Chapter One</a>
+<a href="#two" id="l2">Chapter Two</a>
+</div>
+<p><a href="#two" id="ref1">Ref1</a></p>
+<p><a href="#two" id="ref2">Ref2</a></p>
+<p><a href="#sec" id="ref3">Ref3</a></p>
+<p><a href="#nowhere" id="ref4">Ref4</a></p>
+<p id="here">Here</p>
+<h1 id="one">One</h1>
+<h2>Intro</h2>
+<h1 id="two">Two</h1>
+<h2 id="sec">Detail</h2>
+</body>
+</html>

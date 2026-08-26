@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Page counters</title>
+<style>
+@page { size: 4in 4in; margin: 0.5in; @bottom-center { content: counter(page); } @bottom-right { content: counter(pages); } }
+@page front { @bottom-center { content: counter(page, lower-roman); } }
+@page body:first { counter-reset: page 0; }
+.front { page: front; }
+.body { page: body; }
+.page { break-before: page; }
+</style>
+</head>
+<body>
+<div class="front"><p>Front 1</p><p class="page">Front 2</p></div>
+<div class="body"><p>Body 1</p><p class="page">Body 2</p></div>
+</body>
+</html>
