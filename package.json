@@ -99,5 +99,10 @@
     "typescript-eslint": "^8.68.0",
     "vitest": "^4.1.11",
     "yorkie": "2.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "puppeteer@25.9.0": true,
+    "yorkie@2.0.0": true
   }
 }
