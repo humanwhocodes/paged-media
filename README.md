@@ -20,7 +20,7 @@ A CSS paged media polyfill for browsers. Load one script into an HTML page and t
 - CSS counters (including `counters()` and counters incremented in `::before`/`::after`), `counter-reset: page` on elements, and `var()` in `@page` descriptors continue to work across generated pages
 - The spec's variable dimension rules for page-margin boxes
 
-Features Chromium already supports natively (page sizes, margins, margin boxes, page counters, `:first`/`:left`/`:right`, named pages, forced breaks, orphans/widows) pass through untouched: the polyfill detects which features a document uses, and if the browser supports all of them it does nothing. See [docs/support.md](docs/support.md) for the full support matrix.
+Features Chromium already supports natively (page sizes, margins, margin boxes, page counters, `:first`/`:left`/`:right`, named pages, forced breaks, orphans/widows) pass through untouched: the polyfill detects which features a document uses, and if the browser supports all of them it does nothing. See [docs/support.md](docs/support.md) for the full support matrix and [docs/comparison.md](docs/comparison.md) for a feature comparison with Paged.js.
 
 The polyfill was designed for producing PDFs with [Puppeteer](https://pptr.dev/) but works in any Chromium-based browser, on screen as well as in print.
 
