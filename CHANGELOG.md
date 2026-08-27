@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/humanwhocodes/paged-media/compare/paged-media-v0.1.0...paged-media-v0.1.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* Multiple layout issues ([777e2aa](https://github.com/humanwhocodes/paged-media/commit/777e2aa6252cffcee117043d70344ebf110e2ed8))
+* prevent hyphenated words from being split across page boundaries ([#4](https://github.com/humanwhocodes/paged-media/issues/4)) ([41e010f](https://github.com/humanwhocodes/paged-media/commit/41e010fb69c55a4ae758f376ff0b285b59b8f33c))
+
 ## 0.1.0 (2026-08-26)
 
 
