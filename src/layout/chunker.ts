@@ -1335,7 +1335,13 @@ export class Chunker {
 				}
 
 				if (rects[rects.length - 1].bottom > limit + EPSILON) {
-					const offset = this.#fitOffset(child, limit);
+					let offset = this.#fitOffset(child, limit);
+
+					// Snap backward to the nearest word boundary to avoid
+					// splitting hyphenated words across page boundaries.
+					while (offset > 0 && !/\s/.test(child.data[offset - 1])) {
+						offset--;
+					}
 
 					if (/\S/.test(child.data.slice(offset))) {
 						return { node: child, offset };
