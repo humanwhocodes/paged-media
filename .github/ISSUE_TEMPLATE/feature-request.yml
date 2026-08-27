@@ -1,0 +1,95 @@
+name: Feature Request
+description: Request support for a paged media feature or an improvement to the polyfill.
+title: "feat: "
+labels:
+    - enhancement
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for suggesting an improvement.
+
+              Please check [docs/support.md](https://github.com/humanwhocodes/paged-media/blob/main/docs/support.md)
+              first: the feature may already be implemented, or may be listed as
+              impossible to polyfill from the DOM.
+
+    - type: dropdown
+      id: feature
+      attributes:
+          label: CSS Paged Media feature
+          description: Which paged media feature does this request concern? Pick the closest match.
+          options:
+              - "@page size / margin / page-orientation"
+              - "@page selectors (:first, :left, :right, :blank, :nth())"
+              - Named pages (page, @page name)
+              - Page-margin boxes (@top-center, @bottom-left-corner, ...)
+              - Page counters (counter(page), counter(pages))
+              - "Printer's marks and bleed (marks, bleed)"
+              - Fragmentation (break-before, break-after, break-inside, orphans, widows)
+              - Named strings (string-set, string())
+              - "Running elements (position: running(), element())"
+              - "Footnotes (float: footnote, @footnote, ::footnote-call, ::footnote-marker)"
+              - Cross references (target-counter(), target-counters(), target-text())
+              - Leaders (leader())
+              - CSS counters (counter-reset, counter-increment, counters())
+              - Generated content (content, ::before, ::after, content())
+              - Bookmarks (bookmark-level, bookmark-label, bookmark-state)
+              - CSS parsing / stylesheet loading
+              - Build, types, or packaging
+              - API / options (polyfill(), detectSupport(), PagedMediaConfig)
+              - Other / not sure
+      validations:
+          required: true
+
+    - type: input
+      id: spec-reference
+      attributes:
+          label: Specification reference
+          description: |
+              A link to the relevant section of [CSS Paged Media](https://www.w3.org/TR/css-page-3/)
+              or [CSS Generated Content for Paged Media](https://www.w3.org/TR/css-gcpm-3/),
+              or the exact property, descriptor, or function name being requested.
+              If the request is not tied to a specification, say so here.
+          placeholder: https://www.w3.org/TR/css-page-3/#margin-boxes
+      validations:
+          required: true
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: What problem does this solve?
+          description: |
+              Describe the document you are trying to produce and what stops you today.
+              Focus on the outcome rather than a particular implementation.
+      validations:
+          required: true
+
+    - type: textarea
+      id: proposal
+      attributes:
+          label: What should the polyfill do?
+          description: |
+              Describe the behavior you want. Include the CSS you would write and the
+              output you would expect from it.
+          value: |
+              ```css
+
+              ```
+      validations:
+          required: true
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: Other approaches or workarounds you have tried or considered.
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: participation
+      attributes:
+          label: Participation
+          options:
+              - label: I am willing to submit a pull request for this change.
+                required: false

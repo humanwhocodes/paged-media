@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+    - name: CSS Paged Media support matrix
+      url: https://github.com/humanwhocodes/paged-media/blob/main/docs/support.md
+      about: Check which paged media features Chromium supports natively and which the polyfill implements before filing an issue.
+    - name: Security vulnerabilities
+      url: https://github.com/humanwhocodes/paged-media/security/advisories/new
+      about: Please report security vulnerabilities privately rather than in a public issue.
+    - name: Support the project
+      url: https://github.com/sponsors/nzakas
+      about: This project is maintained in my free time. Sponsorship keeps it going.
