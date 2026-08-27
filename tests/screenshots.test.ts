@@ -41,7 +41,7 @@ const FIXTURES: {
 	{ name: "orphans-widows", pages: 2, options: { force: true } },
 	{ name: "strings", pages: 5 },
 	{ name: "running", pages: 3 },
-	{ name: "footnotes", pages: 2 },
+	{ name: "footnotes", pages: 3 },
 	{ name: "cross-refs", pages: 3 },
 	{ name: "marks", pages: 1 },
 	{ name: "tables-lists", pages: 4, options: { force: true } },

@@ -218,6 +218,13 @@ function textNodesOf(root: Element): Text[] {
 /**
  * Paginates source content into page boxes.
  */
+interface TableColumns {
+	/** The table's border box width. */
+	width: number;
+	/** The width of each column (border box of the cells). */
+	widths: number[];
+}
+
 export class Chunker {
 	#doc: Document;
 	#source: Element;
@@ -234,6 +241,7 @@ export class Chunker {
 	#sourceOf = new WeakMap<Node, Node>();
 	#textStart = new WeakMap<Text, number>();
 	#firstCloneOf = new Map<Element, Element>();
+	#tableColumns = new WeakMap<Element, TableColumns | null>();
 	#pageNameCache = new Map<Element, string | undefined>();
 	#direction: "ltr" | "rtl";
 	#footnoteCounter = 0;
@@ -459,7 +467,11 @@ export class Chunker {
 				if (/\S/.test(node.data.slice(offset))) {
 					return node;
 				}
-			} else if (isElement(node) && !SKIPPED_TAGS.has(node.tagName)) {
+			} else if (
+				isElement(node) &&
+				!SKIPPED_TAGS.has(node.tagName) &&
+				!this.#isOutOfFlow(node)
+			) {
 				if (ATOMIC_TAGS.has(node.tagName)) {
 					return node;
 				}
@@ -489,6 +501,23 @@ export class Chunker {
 
 	#style(element: Element): CSSStyleDeclaration {
 		return this.#doc.defaultView!.getComputedStyle(element);
+	}
+
+	/**
+	 * Determines whether an element does not take part in the page flow
+	 * (running elements and hidden elements), so it must not decide which
+	 * named page a page starts with.
+	 * @param element The source element.
+	 * @returns True if the element is out of the flow.
+	 */
+	#isOutOfFlow(element: Element): boolean {
+		const style = this.#style(element);
+		const running = style
+			.getPropertyValue(CUSTOM_PROPERTIES.running)
+			.trim();
+		return (
+			style.display === "none" || (running !== "" && running !== "none")
+		);
 	}
 
 	#breakBefore(element: Element): ForcedBreak | null {
@@ -645,6 +674,8 @@ export class Chunker {
 						clone.append(this.#cloneDeepUnmapped(child));
 					}
 				}
+
+				this.#applyTableColumns(ancestor, clone);
 			}
 
 			if (ancestor.tagName === "OL") {
@@ -810,9 +841,13 @@ export class Chunker {
 		const isFootnote =
 			style.getPropertyValue(CUSTOM_PROPERTIES.float).trim() ===
 			"footnote";
-		const runningName = style
+		let runningName = style
 			.getPropertyValue(CUSTOM_PROPERTIES.running)
 			.trim();
+
+		if (runningName === "none") {
+			runningName = "";
+		}
 
 		// A deferred cut happens as soon as the inline run ends.
 		if (
@@ -908,7 +943,91 @@ export class Chunker {
 		const clone = this.#cloneShallow(element, false);
 		parent.append(clone);
 		this.#pushed.add(clone);
+
+		if (element.tagName === "TABLE") {
+			this.#applyTableColumns(element, clone);
+		}
+
 		return { descend: true, clone };
+	}
+
+	/**
+	 * Gives every clone of a table the column widths the complete table
+	 * has, so that the columns line up across pages (a table laid out from
+	 * only the rows on one page would size its columns differently).
+	 * @param table The source table.
+	 * @param clone The table clone that was just appended.
+	 */
+	#applyTableColumns(table: Element, clone: Element): void {
+		let columns = this.#tableColumns.get(table);
+
+		if (columns === undefined) {
+			columns = this.#measureTableColumns(table, clone);
+			this.#tableColumns.set(table, columns);
+		}
+
+		if (!columns) {
+			return;
+		}
+
+		const element = clone as HTMLTableElement;
+		element.style.setProperty("width", `${columns.width}px`);
+		element.style.setProperty("table-layout", "fixed");
+
+		if (element.querySelector(":scope > colgroup")) {
+			return;
+		}
+
+		const colgroup = this.#doc.createElement("colgroup");
+
+		for (const width of columns.widths) {
+			const col = this.#doc.createElement("col");
+			col.style.setProperty("width", `${width}px`);
+			colgroup.append(col);
+		}
+
+		element.prepend(colgroup);
+	}
+
+	/**
+	 * Measures the column widths of a complete table by laying out a
+	 * temporary copy of it in place of the clone.
+	 * @param table The source table.
+	 * @param clone The table clone (already in the page).
+	 * @returns The widths, or null if the columns cannot be determined.
+	 */
+	#measureTableColumns(table: Element, clone: Element): TableColumns | null {
+		if (table.querySelector(":scope > colgroup")) {
+			return null;
+		}
+
+		const probe = this.#cloneDeepUnmapped(table) as HTMLElement;
+		probe.style.setProperty("visibility", "hidden", "important");
+		clone.after(probe);
+
+		try {
+			for (const row of probe.querySelectorAll("tr")) {
+				const cells = [...row.children].filter(
+					cell => cell.tagName === "TD" || cell.tagName === "TH",
+				);
+
+				if (
+					cells.length &&
+					cells.every(cell => !cell.hasAttribute("colspan"))
+				) {
+					return {
+						width: probe.getBoundingClientRect().width,
+						widths: cells.map(
+							cell => cell.getBoundingClientRect().width,
+						),
+					};
+				}
+			}
+
+			return null;
+		} finally {
+			probe.remove();
+		}
 	}
 
 	#leaveElement(
@@ -1230,7 +1349,11 @@ export class Chunker {
 				continue;
 			}
 
-			if (child.classList.contains("pm-anchor")) {
+			if (
+				child.classList.contains("pm-anchor") ||
+				child.tagName === "COLGROUP" ||
+				child.tagName === "COL"
+			) {
 				continue;
 			}
 
@@ -1250,7 +1373,10 @@ export class Chunker {
 				return { node: child, offset: 0 };
 			}
 
-			if (rect.bottom <= limit + EPSILON) {
+			if (
+				rect.bottom <= limit + EPSILON &&
+				this.#floatBottom(child, rect.bottom) <= limit + EPSILON
+			) {
 				continue;
 			}
 
@@ -1296,20 +1422,89 @@ export class Chunker {
 		}
 
 		const bodyHeight = this.#page.body.clientHeight;
-		const fits = element.getBoundingClientRect().height <= bodyHeight;
 
 		if (display === "flex" || display === "grid") {
 			// Only atomic when it can fit on a page.
-			return fits;
+			return element.getBoundingClientRect().height <= bodyHeight;
 		}
 
 		if (element.tagName === "TR" || isAvoid(style.breakInside)) {
 			// Rows and avoid-inside elements are kept together unless taller
-			// than the page.
-			return fits;
+			// than the page. The element may still be being filled, so its
+			// complete height is measured rather than the partial clone's.
+			return this.#completeHeight(element) <= bodyHeight;
 		}
 
 		return element.childNodes.length === 0;
+	}
+
+	/**
+	 * Returns the height a clone will have once all of its source content
+	 * has been cloned. Clones that are still being filled (they contain the
+	 * last node on the page) are measured with a temporary complete copy.
+	 * @param element The clone.
+	 * @returns The height.
+	 */
+	#completeHeight(element: Element): number {
+		const source = this.#sourceOf.get(element);
+		let last: Node = this.#page.body;
+
+		while (last.lastChild) {
+			last = last.lastChild;
+		}
+
+		if (
+			!source ||
+			!isElement(source) ||
+			last === element ||
+			!element.contains(last)
+		) {
+			return element.getBoundingClientRect().height;
+		}
+
+		const probe = this.#cloneDeepUnmapped(source) as HTMLElement;
+		probe.style.setProperty("visibility", "hidden", "important");
+		element.after(probe);
+		const height = probe.getBoundingClientRect().height;
+		probe.remove();
+		return height;
+	}
+
+	/**
+	 * Returns the bottom edge of the lowest floated descendant of an
+	 * element, which can extend below the element's own box.
+	 * @param element The element.
+	 * @param bottom The element's own bottom edge.
+	 * @returns The lowest bottom edge.
+	 */
+	#floatBottom(element: Element, bottom: number): number {
+		const range = this.#doc.createRange();
+		range.selectNodeContents(element);
+		let lowest = bottom;
+
+		for (const rect of range.getClientRects()) {
+			if (rect.bottom > lowest) {
+				lowest = rect.bottom;
+			}
+		}
+
+		if (lowest <= bottom + EPSILON) {
+			return bottom;
+		}
+
+		// Only floats count; confirm that one actually reaches that low.
+		let floatBottom = bottom;
+
+		for (const descendant of element.querySelectorAll("*")) {
+			if (this.#style(descendant).float !== "none") {
+				floatBottom = Math.max(
+					floatBottom,
+					descendant.getBoundingClientRect().bottom,
+				);
+			}
+		}
+
+		return floatBottom;
 	}
 
 	/**
@@ -1854,10 +2049,32 @@ export class Chunker {
 
 	#markSplit(element: Element | null): void {
 		let current = element;
+		let alignFixed = false;
 
 		while (current && current !== this.#page.body) {
-			if (this.#style(current).boxDecorationBreak !== "clone") {
+			const style = this.#style(current);
+
+			if (style.boxDecorationBreak !== "clone") {
 				current.setAttribute("data-pm-split-after", "");
+			}
+
+			// The last line of a justified block that continues on the next
+			// page is not its real last line, so it is justified too. Only
+			// the innermost block is changed: `text-align-last` is inherited
+			// and must not leak into complete blocks on the same page.
+			if (
+				!alignFixed &&
+				!style.display.startsWith("inline") &&
+				style.textAlign === "justify"
+			) {
+				(current as HTMLElement).style.setProperty(
+					"text-align-last",
+					"justify",
+				);
+			}
+
+			if (!style.display.startsWith("inline")) {
+				alignFixed = true;
 			}
 
 			current = current.parentElement;

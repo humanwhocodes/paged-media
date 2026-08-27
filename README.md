@@ -17,6 +17,7 @@ A CSS paged media polyfill for browsers. Load one script into an HTML page and t
 - Cross references: `target-counter()`, `target-counters()`, `target-text()`
 - Leaders: `leader(dotted | solid | space | "string")`
 - `counter(page)` and `counter(pages)` in flow content (`::before`/`::after`)
+- CSS counters (including `counters()` and counters incremented in `::before`/`::after`), `counter-reset: page` on elements, and `var()` in `@page` descriptors continue to work across generated pages
 - The spec's variable dimension rules for page-margin boxes
 
 Features Chromium already supports natively (page sizes, margins, margin boxes, page counters, `:first`/`:left`/`:right`, named pages, forced breaks, orphans/widows) pass through untouched: the polyfill detects which features a document uses, and if the browser supports all of them it does nothing. See [docs/support.md](docs/support.md) for the full support matrix.
@@ -132,7 +133,7 @@ The CSS parser and the `@page` cascade are also exported (`parseStylesheet`, `tr
 
 ### Notes and limitations
 
-- Selectors that depend on `body` being the direct parent of content (`body > h1`) no longer match after pagination because content is moved into page boxes. Descendant selectors (`body h1`) still work.
+- Content is moved into page boxes, so `body` is no longer its direct parent. Child combinators on `body` (`body > h1`) are rewritten to match the page containers as well; other selectors that depend on the original ancestry (`html > body > h1` with a class on `body`, for instance) may stop matching.
 - Content inside `display: flex`/`grid` containers, positioned elements, and inline-blocks is treated as unbreakable unless it is taller than a page.
 - `footnote-display: compact` is treated as `block`.
 - PDF bookmarks (`bookmark-level` and friends) cannot be produced from the DOM; use Puppeteer's `outline: true` option instead.

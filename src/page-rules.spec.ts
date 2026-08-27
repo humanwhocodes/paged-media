@@ -8,9 +8,15 @@
 //-----------------------------------------------------------------------------
 
 import { describe, it, expect } from "vitest";
-import { parseStylesheet, serialize, type AtRule } from "./css/parser.js";
+import {
+	parseComponentValues,
+	parseStylesheet,
+	serialize,
+	type AtRule,
+} from "./css/parser.js";
 import {
 	createPageRule,
+	substituteVariables,
 	matchesPage,
 	matchPageRules,
 	resolvePageStyle,
@@ -283,5 +289,62 @@ describe("resolvePageStyle()", () => {
 		const style = resolvePageStyle(list, context(), OPTIONS);
 		expect(style.size).toEqual(OPTIONS.defaultSize);
 		expect(style.margins.top).toBe(48);
+	});
+});
+
+describe("substituteVariables()", () => {
+	const resolve = (name: string) =>
+		({ "--w": "5in", "--h": "var(--w)", "--empty": "" })[name];
+
+	it("should resolve var() references and fallbacks", () => {
+		expect(
+			serialize(
+				substituteVariables(
+					parseComponentValues("var(--w) 4in"),
+					resolve,
+				),
+			),
+		).toBe("5in 4in");
+		expect(
+			serialize(
+				substituteVariables(parseComponentValues("var(--h)"), resolve),
+			),
+		).toBe("5in");
+		expect(
+			serialize(
+				substituteVariables(
+					parseComponentValues("var(--missing, 3in)"),
+					resolve,
+				),
+			),
+		).toBe("3in");
+		expect(
+			serialize(
+				substituteVariables(
+					parseComponentValues("var(--missing)"),
+					resolve,
+				),
+			),
+		).toBe("var(--missing)");
+		expect(
+			serialize(
+				substituteVariables(
+					parseComponentValues("var(--empty, 1in)"),
+					resolve,
+				),
+			),
+		).toBe("1in");
+	});
+
+	it("should resolve custom properties in page sizes (pagedjs#259)", () => {
+		const list = rules(
+			"@page { size: var(--w) var(--h); margin: var(--m, 1in); }",
+		);
+		const style = resolvePageStyle(list, context(), {
+			...OPTIONS,
+			resolveVariable: resolve,
+		});
+		expect(style.size).toEqual({ width: 480, height: 480 });
+		expect(style.margins.top).toBe(96);
 	});
 });

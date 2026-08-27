@@ -165,3 +165,61 @@ describe("customPropertyRegistrations()", () => {
 		expect(css).toContain("@property --pm-running");
 	});
 });
+
+describe("transformStylesheets() PagedJS regressions", () => {
+	it("should ignore @page rules inside @media screen and unknown at-rules (pagedjs#212)", () => {
+		const result = transform(`
+			@page { margin: 1in; }
+			@media screen { @page { margin: 0; } }
+			@bogus print { @page { margin: 0; } }
+			@supports (display: grid) { @page { size: A5; } }
+		`);
+		expect(result.pageRules).toHaveLength(2);
+		expect(result.css).toContain("@bogus print");
+		expect(result.css).not.toContain("@media screen");
+	});
+
+	it("should let more specific float and position values override footnotes and running elements (pagedjs#224)", () => {
+		const result = transform(`
+			cite { float: footnote; }
+			figure cite { float: none; }
+			.hdr { position: running(header); }
+			.plain .hdr { position: static; }
+		`);
+		expect(result.css).toMatch(
+			/figure cite \{\s*float: none;\s*--pm-float: none;\s*\}/,
+		);
+		expect(result.css).toMatch(
+			/\.plain \.hdr \{\s*position: static;\s*--pm-running: none;\s*\}/,
+		);
+	});
+
+	it("should widen child combinators on body to the page containers (pagedjs#225)", () => {
+		const result = transform(`
+			body > aside { page: interlude; }
+			html>body>p, .x body > p { color: red; }
+			.body > p { color: blue; }
+		`);
+		expect(result.css).toContain(
+			":is(body, :where(.pm-source, .pm-body)) > aside {",
+		);
+		expect(result.css).toContain(
+			"html>:is(body, :where(.pm-source, .pm-body)) >p, .x :is(body, :where(.pm-source, .pm-body)) > p {",
+		);
+		expect(result.css).toContain(".body > p {");
+	});
+
+	it("should note counter properties on pseudo-elements", () => {
+		expect(
+			transform("li::before { counter-increment: item; }").pseudoCounters,
+		).toBe(true);
+		expect(
+			transform("li:after { counter-reset: item; }").pseudoCounters,
+		).toBe(true);
+		expect(
+			transform(
+				"li { counter-increment: item; } li::before { content: counter(item); }",
+			).pseudoCounters,
+		).toBe(false);
+	});
+});

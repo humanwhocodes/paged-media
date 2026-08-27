@@ -51,6 +51,8 @@ export interface TransformResult {
 	dynamicContent: DynamicContentRule[];
 	/** The features used by the stylesheets. */
 	features: Set<FeatureName>;
+	/** Whether counter properties are set on `::before`/`::after` rules. */
+	pseudoCounters: boolean;
 }
 
 export interface TransformOptions {
@@ -75,6 +77,26 @@ export const CUSTOM_PROPERTIES = {
 const PSEUDO_ELEMENT_PATTERN =
 	/(?:::?(before|after|marker)|>\s*\.pm-(footnote-call|footnote-marker))\s*$/i;
 const LEFT_RIGHT_BREAKS = new Set(["left", "right", "recto", "verso"]);
+/**
+ * Matches `body >` in a selector. After pagination the content's direct
+ * parent is the hidden source container or a page's body box, so child
+ * combinators on `body` are widened to those containers (with the same
+ * specificity as `body`).
+ */
+const BODY_CHILD_PATTERN = /(^|[\s,(>~+])body\s*>/gi;
+const BODY_CHILD_REPLACEMENT = "$1:is(body, :where(.pm-source, .pm-body)) >";
+/**
+ * Conditional group rules whose contents are processed as if they applied.
+ * Rules nested inside any other (unknown) at-rule are left untouched so
+ * that `@page` rules inside them are ignored, as browsers do.
+ */
+const TRANSPARENT_AT_RULES = new Set([
+	"supports",
+	"layer",
+	"container",
+	"scope",
+	"starting-style",
+]);
 
 //-----------------------------------------------------------------------------
 // Transformer
@@ -84,6 +106,8 @@ class Transformer {
 	pageRules: PageRule[] = [];
 	dynamicContent: DynamicContentRule[] = [];
 	features = new Set<FeatureName>();
+	/** Whether any `::before`/`::after` rule sets counter properties. */
+	pseudoCounters = false;
 	#order = 0;
 	#hoistPrint: boolean;
 
@@ -140,6 +164,13 @@ class Transformer {
 
 		if (name === "media") {
 			const query = serialize(rule.prelude).toLowerCase();
+
+			// Screen-only rules never apply to paged output; their contents
+			// (including any @page rules) are dropped before being examined.
+			if (this.#hoistPrint && /^\s*(only\s+)?screen\s*$/.test(query)) {
+				return [];
+			}
+
 			const nested = this.transformRules(rule.rules ?? []);
 
 			if (
@@ -150,14 +181,10 @@ class Transformer {
 				return nested;
 			}
 
-			if (this.#hoistPrint && /^\s*(only\s+)?screen\s*$/.test(query)) {
-				return [];
-			}
-
 			return [{ ...rule, rules: nested }];
 		}
 
-		if (rule.rules) {
+		if (rule.rules && TRANSPARENT_AT_RULES.has(name)) {
 			return [{ ...rule, rules: this.transformRules(rule.rules) }];
 		}
 
@@ -253,7 +280,10 @@ class Transformer {
 	}
 
 	#transformStyleRule(rule: Rule & { type: "style" }): Rule {
-		let selector = rule.selector;
+		let selector = rule.selector.replace(
+			BODY_CHILD_PATTERN,
+			BODY_CHILD_REPLACEMENT,
+		);
 
 		if (/::footnote-(call|marker)/i.test(selector)) {
 			this.features.add("footnotes");
@@ -263,8 +293,16 @@ class Transformer {
 		}
 
 		const declarations: Declaration[] = [];
+		const isPseudo = /::?(before|after)\s*$/i.test(selector);
 
 		for (const declaration of rule.declarations) {
+			if (
+				isPseudo &&
+				/^counter-(reset|increment|set)$/i.test(declaration.name)
+			) {
+				this.pseudoCounters = true;
+			}
+
 			declarations.push(
 				...this.#transformDeclaration(declaration, selector),
 			);
@@ -297,9 +335,27 @@ class Transformer {
 					return [{ ...declaration, name: CUSTOM_PROPERTIES.float }];
 				}
 
-				return [declaration];
+				// Other float values also override an inherited-by-cascade
+				// `float: footnote` from a less specific rule.
+				return [
+					declaration,
+					{ ...declaration, name: CUSTOM_PROPERTIES.float },
+				];
 
 			case "position":
+				if (!isFunction(first, "running")) {
+					// `position: static` (etc.) from a more specific rule
+					// cancels `position: running()` from a less specific one.
+					return [
+						declaration,
+						{
+							...declaration,
+							name: CUSTOM_PROPERTIES.running,
+							value: parseComponentValues("none"),
+						},
+					];
+				}
+
 				if (isFunction(first, "running")) {
 					this.features.add("runningElements");
 					const inner = withoutWhitespace(first.value)[0];
@@ -479,6 +535,7 @@ export function transformStylesheets(
 		pageRules: transformer.pageRules,
 		dynamicContent: transformer.dynamicContent,
 		features: transformer.features,
+		pseudoCounters: transformer.pseudoCounters,
 	};
 }
 

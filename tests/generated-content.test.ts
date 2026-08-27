@@ -146,17 +146,18 @@ describe("footnotes", () => {
 
 		expect(result.errors).toEqual([]);
 		expect(result.polyfilledFeatures).toContain("footnotes");
-		expect(result.pages).toHaveLength(2);
+		expect(result.pages).toHaveLength(3);
 		expect(result.pages[0].body).toBe(
-			"Alpha[1] beta[2] gamma. filler Delta[3] epsilon[4]. Zeta[5] eta[6] theta.",
+			"Alpha[1] beta[2] gamma. filler Delta[3] epsilon[4].",
 		);
-		expect(result.pages[0].footnotes).toBe(
-			"1Note A2Note B3Note C4Note D5Note E6Note F",
-		);
+		expect(result.pages[0].footnotes).toBe("1Note A2Note B3Note C4Note D");
 		expect(result.pages[0].overflow).toBeLessThanOrEqual(0);
-		// The footnote counter resets per page.
-		expect(result.pages[1].body).toBe("Next page[1].");
-		expect(result.pages[1].footnotes).toBe("1Note G");
+		// The line whose notes no longer fit moves to the next page, and
+		// the footnote counter resets per page.
+		expect(result.pages[1].body).toBe("Zeta[1] eta[2] theta.");
+		expect(result.pages[1].footnotes).toBe("1Note E2Note F");
+		expect(result.pages[2].body).toBe("Next page[1].");
+		expect(result.pages[2].footnotes).toBe("1Note G");
 
 		const info = await page.evaluate(() => {
 			const first = document.querySelector(".pm-page")!;
@@ -183,14 +184,7 @@ describe("footnotes", () => {
 			};
 		});
 		expect(info.borderTop).toBe("1px");
-		expect(info.displays).toEqual([
-			"block",
-			"block",
-			"inline",
-			"inline",
-			"block",
-			"block",
-		]);
+		expect(info.displays).toEqual(["block", "block", "inline", "inline"]);
 		expect(info.callColor).toBe("rgb(255, 0, 0)");
 		expect(info.callAlign).toBe("super");
 		expect(info.markerWeight).toBe("700");

@@ -18,7 +18,15 @@ import {
 	parseLength,
 	parsePageSize,
 } from "./css/values.js";
-import { type CounterValues, computeCounters } from "./counters.js";
+import {
+	type CounterStates,
+	type CounterValues,
+	computeCounterStates,
+	counterStateBefore,
+	defaultCounterStyle,
+	parseCounterValue,
+	toCounterValues,
+} from "./counters.js";
 import { type PageStyleOptions } from "./page-rules.js";
 import {
 	type FeatureName,
@@ -128,10 +136,43 @@ async function fetchStylesheet(
 			return undefined;
 		}
 
-		return await resolveImports(await response.text(), url, depth);
+		return await resolveImports(
+			absolutizeUrls(await response.text(), url),
+			url,
+			depth,
+		);
 	} catch {
 		return undefined;
 	}
+}
+
+const URL_PATTERN = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)"'\s]*))\s*\)/g;
+
+/**
+ * Rewrites relative `url()` references in a stylesheet so that they keep
+ * resolving against the stylesheet's own location once the text is moved
+ * into an inline style element in the document.
+ * @param css The CSS text.
+ * @param baseURL The stylesheet URL.
+ * @returns The rewritten CSS.
+ */
+export function absolutizeUrls(css: string, baseURL: string): string {
+	return css.replace(
+		URL_PATTERN,
+		(match, doubleQuoted, singleQuoted, bare) => {
+			const raw: string = doubleQuoted ?? singleQuoted ?? bare ?? "";
+
+			if (!raw || /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(raw)) {
+				return match;
+			}
+
+			try {
+				return `url("${new URL(raw, baseURL).href}")`;
+			} catch {
+				return match;
+			}
+		},
+	);
 }
 
 const IMPORT_PATTERN =
@@ -271,6 +312,36 @@ async function collectStylesheets(
 	return results;
 }
 
+/**
+ * Waits for the fonts used by the document to finish loading. Replacing
+ * the author stylesheets creates new font faces, which only start loading
+ * once they are used for layout, so layout is forced first.
+ * @param doc The document.
+ */
+async function waitForFonts(doc: Document): Promise<void> {
+	if (!doc.fonts) {
+		return;
+	}
+
+	for (let attempt = 0; attempt < 5; attempt++) {
+		// Force style and layout so that the faces start loading.
+		void doc.body.offsetHeight;
+		await doc.fonts.ready;
+
+		let loading = false;
+
+		doc.fonts.forEach(face => {
+			if (face.status === "loading") {
+				loading = true;
+			}
+		});
+
+		if (!loading) {
+			return;
+		}
+	}
+}
+
 function waitForReady(doc: Document): Promise<void> {
 	if (doc.readyState !== "loading") {
 		return Promise.resolve();
@@ -339,7 +410,7 @@ export async function polyfill(
 		};
 	}
 
-	const pages = paginate(doc, collected, transformed, options);
+	const pages = await paginate(doc, collected, transformed, options);
 	const result: PolyfillResult = {
 		polyfilled: true,
 		pageCount: pages.length,
@@ -383,19 +454,21 @@ function resolveDefaultMargin(
 	);
 }
 
-function paginate(
+async function paginate(
 	doc: Document,
 	collected: CollectedStylesheet[],
 	transformed: TransformResult,
 	options: PolyfillOptions,
-): PageBox[] {
+): Promise<PageBox[]> {
 	const view = doc.defaultView!;
 	const fontSize =
 		parseFloat(view.getComputedStyle(doc.documentElement).fontSize) || 16;
+	const rootStyle = view.getComputedStyle(doc.documentElement);
 	const pageStyleOptions: PageStyleOptions = {
 		defaultSize: resolveDefaultSize(options.defaultPageSize, fontSize),
 		defaultMargin: resolveDefaultMargin(options.defaultMargin, fontSize),
 		fontSize,
+		resolveVariable: name => rootStyle.getPropertyValue(name) || undefined,
 	};
 
 	// Replace the author stylesheets with the transformed versions.
@@ -438,6 +511,10 @@ body {
 }`;
 	doc.head.append(bodyStyle);
 
+	// The transformed stylesheets declare new font faces; wait for them so
+	// that pagination measures text with the right fonts.
+	await waitForFonts(doc);
+
 	// Move the content into a hidden source container.
 	const source = doc.createElement("div");
 	source.className = "pm-source";
@@ -451,15 +528,28 @@ body {
 	container.className = "pm-pages";
 	doc.body.append(source, container);
 
-	// Counters in the source are needed for string-set and cross references.
-	let counters: Map<Element, CounterValues> | undefined;
+	// Counters in the source are needed for string-set, cross references,
+	// and to continue counters across pages.
+	let counterStates: Map<Element, CounterStates> | undefined;
 
-	function countersOf(element: Element): CounterValues | undefined {
-		if (!counters) {
-			counters = computeCounters(source);
+	function statesOf(): Map<Element, CounterStates> {
+		if (!counterStates) {
+			// Pseudo-element styles are only consulted when a stylesheet
+			// sets counter properties on them (they cost a style lookup
+			// per element otherwise).
+			counterStates = computeCounterStates(source, (element, pseudo) =>
+				pseudo && !transformed.pseudoCounters
+					? undefined
+					: defaultCounterStyle(element, pseudo),
+			);
 		}
 
-		return counters.get(element);
+		return counterStates;
+	}
+
+	function countersOf(element: Element): CounterValues | undefined {
+		const states = statesOf().get(element);
+		return states ? toCounterValues(states.inside) : undefined;
 	}
 
 	const strings = new AssignmentStore<string>();
@@ -478,8 +568,23 @@ body {
 	});
 
 	const { pages, firstCloneOf } = chunker.layout();
+	const pageOfElement = new Map<Element, PageBox>();
 
-	// Page counters.
+	for (const page of pages) {
+		pageOfElement.set(page.element, page);
+	}
+
+	function pageOf(element: Element): PageBox | undefined {
+		const pageElement = element.closest(".pm-page");
+		return pageElement ? pageOfElement.get(pageElement) : undefined;
+	}
+
+	// Page counters. `counter-reset: page N` on an element in the flow
+	// restarts the numbering at the page the element starts on.
+	const flowResets = findPageCounterResets(source, view, element => {
+		const clone = firstCloneOf.get(element);
+		return clone ? pageOf(clone) : undefined;
+	});
 	const counterValues = new Map<string, number>();
 
 	for (const page of pages) {
@@ -499,6 +604,12 @@ body {
 			counterValues.set(name, (counterValues.get(name) ?? 0) + amount);
 		}
 
+		const flowReset = flowResets.get(page);
+
+		if (flowReset !== undefined) {
+			counterValues.set("page", flowReset);
+		}
+
 		for (const [name, value] of counterValues) {
 			page.counters.set(name, value);
 		}
@@ -510,17 +621,6 @@ body {
 			"data-pm-page-number",
 			String(page.counters.get("page")),
 		);
-	}
-
-	const pageOfElement = new Map<Element, PageBox>();
-
-	for (const page of pages) {
-		pageOfElement.set(page.element, page);
-	}
-
-	function pageOf(element: Element): PageBox | undefined {
-		const pageElement = element.closest(".pm-page");
-		return pageElement ? pageOfElement.get(pageElement) : undefined;
 	}
 
 	function resolveTarget(
@@ -576,6 +676,14 @@ body {
 		};
 	}
 
+	// Each page is a separate DOM subtree, so CSS counters would restart on
+	// every page; seed them with the values they have where the page starts.
+	if (pages.length > 1) {
+		continueCounters(doc, pages, source, statesOf(), node =>
+			chunker.sourceOf(node),
+		);
+	}
+
 	// Margin boxes.
 	for (const page of pages) {
 		renderMarginBoxes(page, contextForPage(page), fontSize);
@@ -602,6 +710,197 @@ body {
 		new CustomEvent("pagedmedia:rendered", { detail: { pages } }),
 	);
 	return pages;
+}
+
+/** Boxes whose `::before` would be wrapped in anonymous boxes or become an item. */
+const NO_PSEUDO_SEED_TAGS = new Set([
+	"TABLE",
+	"THEAD",
+	"TBODY",
+	"TFOOT",
+	"TR",
+	"COLGROUP",
+]);
+
+/**
+ * Seeds the CSS counters on each page so that they continue from the
+ * values they had at the point in the source where the page starts. Each
+ * page is a separate DOM subtree, so counters would otherwise restart.
+ *
+ * Counters are recreated with the same originating relationship they had
+ * in the source (CSS Lists 3 §4.4), because that decides whether later
+ * `counter-reset`s replace or nest them: a counter created by a continued
+ * ancestor is recreated with `counter-reset` on that ancestor's clone; a
+ * counter created by an earlier sibling is recreated on a `::before`
+ * pseudo-element of the scope's clone, which acts as a previous sibling.
+ * The continued clones' own counter properties are neutralized because
+ * their effects are already included in the seeded values.
+ * @param doc The document.
+ * @param pages The pages.
+ * @param source The source container.
+ * @param states The counter states of the source elements.
+ * @param sourceOf Returns the source node of a node in a page.
+ */
+function continueCounters(
+	doc: Document,
+	pages: PageBox[],
+	source: Element,
+	states: Map<Element, CounterStates>,
+	sourceOf: (node: Node) => Node | undefined,
+): void {
+	const view = doc.defaultView!;
+	const rules: string[] = [];
+	let seedId = 0;
+
+	for (const page of pages.slice(1)) {
+		// The chain of continued clones down to the page's first new node.
+		const chain: Element[] = [];
+		let node: Node | null = page.body.firstChild;
+
+		while (
+			node &&
+			node.nodeType === 1 &&
+			(node as Element).hasAttribute("data-pm-continued")
+		) {
+			chain.push(node as Element);
+			node = node.firstChild;
+		}
+
+		while (node && !sourceOf(node)) {
+			node = node.nextSibling;
+		}
+
+		const instances = node
+			? counterStateBefore(states, sourceOf(node)!)
+			: undefined;
+
+		if (!instances?.length) {
+			continue;
+		}
+
+		const cloneOf = new Map<Node, Element>([[source, page.body]]);
+
+		for (const clone of chain) {
+			const original = sourceOf(clone);
+
+			if (original) {
+				cloneOf.set(original, clone);
+			}
+		}
+
+		const inline = new Map<Element, string[]>();
+		const pseudo = new Map<Element, string[]>();
+
+		for (const instance of instances) {
+			const creatorClone = cloneOf.get(instance.creator);
+			const scopeClone =
+				(instance.scopeEnd && cloneOf.get(instance.scopeEnd)) ??
+				page.body;
+			const entry = `${instance.name} ${instance.value}`;
+
+			if (creatorClone) {
+				push(inline, creatorClone, entry);
+			} else if (canSeedPseudo(scopeClone, view)) {
+				push(pseudo, scopeClone, entry);
+			} else {
+				push(inline, scopeClone, entry);
+			}
+		}
+
+		for (const clone of chain) {
+			const style = (clone as HTMLElement).style;
+			style.setProperty("counter-increment", "none");
+			style.setProperty("counter-set", "none");
+			style.setProperty(
+				"counter-reset",
+				inline.get(clone)?.join(" ") ?? "none",
+			);
+		}
+
+		const bodyResets = inline.get(page.body);
+
+		if (bodyResets) {
+			page.body.style.setProperty("counter-reset", bodyResets.join(" "));
+		}
+
+		for (const [element, resets] of pseudo) {
+			const id = String(++seedId);
+			element.setAttribute("data-pm-counter-seed", id);
+			rules.push(
+				`.pm-page [data-pm-counter-seed="${id}"]::before { all: initial !important; content: "" !important; counter-reset: ${resets.join(" ")} !important; counter-increment: none !important; counter-set: none !important; }`,
+			);
+		}
+	}
+
+	if (rules.length) {
+		const style = doc.createElement("style");
+		style.setAttribute("data-pm-styles", "counters");
+		style.textContent = rules.join("\n");
+		doc.head.append(style);
+	}
+}
+
+function push<K>(map: Map<K, string[]>, key: K, value: string): void {
+	const list = map.get(key) ?? [];
+	list.push(value);
+	map.set(key, list);
+}
+
+/**
+ * Determines whether a `::before` pseudo-element can be added to a clone
+ * without disturbing its layout.
+ * @param element The clone.
+ * @param view The window.
+ * @returns True if a pseudo-element seed is safe.
+ */
+function canSeedPseudo(element: Element, view: Window): boolean {
+	if (NO_PSEUDO_SEED_TAGS.has(element.tagName)) {
+		return false;
+	}
+
+	const { display } = view.getComputedStyle(element);
+	return !/flex|grid|table/.test(display) || display === "table-cell";
+}
+
+/**
+ * Finds elements that reset the `page` counter and maps the page each one
+ * starts on to the reset value (the first reset on a page wins).
+ * @param source The source container.
+ * @param view The window.
+ * @param pageOf Returns the page an element was laid out on.
+ * @returns The resets by page.
+ */
+function findPageCounterResets(
+	source: Element,
+	view: Window,
+	pageOf: (element: Element) => PageBox | undefined,
+): Map<PageBox, number> {
+	const resets = new Map<PageBox, number>();
+
+	for (const element of source.querySelectorAll("*")) {
+		const style = view.getComputedStyle(element);
+		const declared = style.counterReset;
+
+		if (!declared || declared === "none" || !/\bpage\b/.test(declared)) {
+			continue;
+		}
+
+		const reset = parseCounterValue(declared, 0).find(
+			([name]) => name === "page",
+		);
+
+		if (!reset) {
+			continue;
+		}
+
+		const page = pageOf(element);
+
+		if (page && !resets.has(page)) {
+			resets.set(page, reset[1]);
+		}
+	}
+
+	return resets;
 }
 
 function buildPrintStyles(pages: PageBox[]): string {

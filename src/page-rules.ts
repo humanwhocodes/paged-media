@@ -12,8 +12,11 @@ import {
 	type AtRule,
 	type ComponentValue,
 	type Declaration,
+	isFunction,
 	isIdent,
 	isToken,
+	parseComponentValues,
+	trimWhitespace,
 	withoutWhitespace,
 } from "./css/parser.js";
 import {
@@ -99,6 +102,12 @@ export interface PageStyleOptions {
 	defaultSize: PageSize;
 	defaultMargin: number;
 	fontSize: number;
+	/**
+	 * Resolves a custom property referenced with `var()` in a page
+	 * declaration (e.g. `size: var(--page-width) var(--page-height)`).
+	 * Returns undefined when the property is not defined.
+	 */
+	resolveVariable?: (name: string) => string | undefined;
 }
 
 //-----------------------------------------------------------------------------
@@ -363,6 +372,58 @@ const PAGE_ONLY_DESCRIPTORS = new Set([
  * @param options Defaults used when the descriptors are not specified.
  * @returns The resolved page style.
  */
+/**
+ * Replaces `var()` references in a value with the resolved custom property
+ * values (or their fallbacks). Unresolvable references are left in place.
+ * @param values The component values.
+ * @param resolve The custom property resolver.
+ * @returns The substituted values.
+ */
+export function substituteVariables(
+	values: ComponentValue[],
+	resolve?: (name: string) => string | undefined,
+): ComponentValue[] {
+	if (!values.some(value => isFunction(value, "var"))) {
+		return values;
+	}
+
+	const output: ComponentValue[] = [];
+
+	for (const value of values) {
+		if (!isFunction(value, "var")) {
+			output.push(value);
+			continue;
+		}
+
+		const parts = withoutWhitespace(value.value);
+		const name = isIdent(parts[0]) ? parts[0].value : undefined;
+		const resolved = name && resolve ? resolve(name)?.trim() : undefined;
+
+		if (resolved) {
+			output.push(
+				...substituteVariables(parseComponentValues(resolved), resolve),
+			);
+			continue;
+		}
+
+		const comma = value.value.findIndex(part => isToken(part, "comma"));
+
+		if (comma !== -1) {
+			output.push(
+				...substituteVariables(
+					trimWhitespace(value.value.slice(comma + 1)),
+					resolve,
+				),
+			);
+			continue;
+		}
+
+		output.push(value);
+	}
+
+	return output;
+}
+
 export function resolvePageStyle(
 	rules: PageRule[],
 	context: PageContext,
@@ -410,7 +471,11 @@ export function resolvePageStyle(
 	let bleedAuto = true;
 
 	for (const declaration of pageDeclarations) {
-		const { name, value } = declaration;
+		const { name } = declaration;
+		const value = substituteVariables(
+			declaration.value,
+			options.resolveVariable,
+		);
 
 		switch (name) {
 			case "size": {
