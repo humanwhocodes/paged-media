@@ -18,6 +18,7 @@ import {
 	runPolyfill,
 	closeBrowser,
 	printToPdf,
+	browserName,
 } from "./helpers/browser.js";
 
 //-----------------------------------------------------------------------------
@@ -236,11 +237,23 @@ describe("PagedJS issues", () => {
 		]);
 
 		const pdf = await printToPdf(page);
-		expect(pdf.map(p => [p.width, p.height])).toEqual([
-			[288, 288],
-			[432, 288],
-			[288, 288],
-		]);
+
+		if (browserName === "firefox") {
+			// Firefox's WebDriver BiDi print cannot vary sheet sizes per
+			// page; every page gets the first sheet size.
+			expect(pdf.map(p => [p.width, p.height])).toEqual([
+				[288, 288],
+				[288, 288],
+				[288, 288],
+			]);
+		} else {
+			expect(pdf.map(p => [p.width, p.height])).toEqual([
+				[288, 288],
+				[432, 288],
+				[288, 288],
+			]);
+		}
+
 		await page.close();
 	});
 
@@ -1185,12 +1198,12 @@ describe("PagedJS issues", () => {
 		});
 
 		expect(result.errors).toEqual([]);
-		expect(styles).toEqual({
-			callAlign: "super",
-			callSize: "9.8px",
-			markerAlign: "super",
-			markerVariant: "super",
-		});
+		// Browsers serialize the computed 70% font size differently
+		// (Chrome "9.8px", Firefox "9.79688px").
+		expect(parseFloat(styles.callSize)).toBeCloseTo(9.8, 1);
+		expect(styles.callAlign).toBe("super");
+		expect(styles.markerAlign).toBe("super");
+		expect(styles.markerVariant).toBe("super");
 		await page.close();
 	});
 

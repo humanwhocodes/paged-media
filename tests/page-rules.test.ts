@@ -14,6 +14,7 @@ import {
 	runPolyfill,
 	closeBrowser,
 	printToPdf,
+	browserName,
 } from "./helpers/browser.js";
 
 //-----------------------------------------------------------------------------
@@ -284,18 +285,37 @@ describe("named pages and selectors", () => {
 		const page = await openFixture("native.html");
 		const result = await runPolyfill(page);
 
-		expect(result.polyfilled).toBe(false);
-		expect(result.pageCount).toBe(0);
-		expect(result.pages).toEqual([]);
 		expect(result.features.sort()).toEqual(
-			["marginBoxes", "pageCounters", "pageSelectors", "pageSize"].sort(),
+			[
+				"marginBoxes",
+				"orphansWidows",
+				"pageCounters",
+				"pageSelectors",
+				"pageSize",
+			].sort(),
 		);
-		expect(result.polyfilledFeatures).toEqual([]);
 
-		const untouched = await page.evaluate(
-			() => !document.querySelector(".pm-pages"),
-		);
-		expect(untouched).toBe(true);
+		if (browserName === "firefox") {
+			// Firefox implements neither margin boxes nor orphans/widows,
+			// so the same document is paginated there.
+			expect(result.polyfilled).toBe(true);
+			expect(result.polyfilledFeatures.sort()).toEqual([
+				"marginBoxes",
+				"orphansWidows",
+				"pageCounters",
+			]);
+		} else {
+			expect(result.polyfilled).toBe(false);
+			expect(result.pageCount).toBe(0);
+			expect(result.pages).toEqual([]);
+			expect(result.polyfilledFeatures).toEqual([]);
+
+			const untouched = await page.evaluate(
+				() => !document.querySelector(".pm-pages"),
+			);
+			expect(untouched).toBe(true);
+		}
+
 		await page.close();
 	});
 

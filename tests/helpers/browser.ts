@@ -67,6 +67,14 @@ const MIME_TYPES: Record<string, string> = {
 	".svg": "image/svg+xml",
 };
 
+/**
+ * The browser the tests run in. Defaults to Chrome; set `BROWSER=firefox`
+ * to run the suite in Firefox (installed via
+ * `npx puppeteer browsers install firefox`).
+ */
+export const browserName: "chrome" | "firefox" =
+	process.env.BROWSER === "firefox" ? "firefox" : "chrome";
+
 let browser: Browser | undefined;
 let bundle: string | undefined;
 let server: Server | undefined;
@@ -118,9 +126,11 @@ export async function getServer(): Promise<string> {
  */
 export async function getBrowser(): Promise<Browser> {
 	if (!browser) {
-		browser = await puppeteer.launch({
-			args: ["--no-sandbox", "--font-render-hinting=none"],
-		});
+		browser = await puppeteer.launch(
+			browserName === "firefox"
+				? { browser: "firefox" }
+				: { args: ["--no-sandbox", "--font-render-hinting=none"] },
+		);
 	}
 
 	return browser;
@@ -266,10 +276,35 @@ export async function runPolyfill(
  * @returns The PDF pages.
  */
 export async function printToPdf(page: Page): Promise<PdfPage[]> {
-	const buffer = await page.pdf({
+	const options: Parameters<Page["pdf"]>[0] = {
 		preferCSSPageSize: true,
 		printBackground: true,
-	});
+	};
+
+	if (browserName === "firefox") {
+		// Firefox's WebDriver BiDi print does not honor CSS `@page` sizes,
+		// so the sheet size the polyfill declared is passed explicitly.
+		// (Documents mixing sheet sizes get the first size for every page.)
+		const size = await page.evaluate(() => {
+			const style = document.querySelector(
+				'style[data-pm-styles="print"]',
+			);
+			const match = style?.textContent?.match(
+				/size:\s*([\d.]+)px\s+([\d.]+)px/,
+			);
+			return match
+				? { width: Number(match[1]), height: Number(match[2]) }
+				: null;
+		});
+
+		if (size) {
+			options.width = `${size.width / 96}in`;
+			options.height = `${size.height / 96}in`;
+			options.margin = { top: 0, right: 0, bottom: 0, left: 0 };
+		}
+	}
+
+	const buffer = await page.pdf(options);
 	const doc = await getDocument({ data: new Uint8Array(buffer) }).promise;
 	const pages: PdfPage[] = [];
 

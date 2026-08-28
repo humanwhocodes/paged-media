@@ -32,3 +32,22 @@ jobs:
                   npm test
               env:
                   CI: true
+
+    test-firefox:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v7
+            - name: Use Node.js lts/*
+              uses: actions/setup-node@v7
+              with:
+                  node-version: lts/*
+            - name: npm install, build, and test in Firefox
+              run: |
+                  npm ci
+                  npx puppeteer browsers install firefox
+                  npm run build --if-present
+                  npm test
+              env:
+                  CI: true
+                  BROWSER: firefox

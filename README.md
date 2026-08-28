@@ -6,7 +6,7 @@ If you find this useful, please consider supporting my work with a [donation](ht
 
 ## Description
 
-A CSS paged media polyfill for browsers. Load one script into an HTML page and the page is laid out according to the [CSS Paged Media](https://www.w3.org/TR/css-page-3/) and [CSS Generated Content for Paged Media](https://www.w3.org/TR/css-gcpm-3/) specifications, including the features Chromium doesn't implement yet:
+A CSS paged media polyfill for browsers. Load one script into an HTML page and the page is laid out according to the [CSS Paged Media](https://www.w3.org/TR/css-page-3/) and [CSS Generated Content for Paged Media](https://www.w3.org/TR/css-gcpm-3/) specifications, including the features browsers don't implement yet:
 
 - `@page :blank` and `@page :nth(An+B)` page selectors (including page groups for named pages)
 - Blank page insertion for `break-before`/`break-after: left | right | recto | verso`
@@ -20,9 +20,9 @@ A CSS paged media polyfill for browsers. Load one script into an HTML page and t
 - CSS counters (including `counters()` and counters incremented in `::before`/`::after`), `counter-reset: page` on elements, and `var()` in `@page` descriptors continue to work across generated pages
 - The spec's variable dimension rules for page-margin boxes
 
-Features Chromium already supports natively (page sizes, margins, margin boxes, page counters, `:first`/`:left`/`:right`, named pages, forced breaks, orphans/widows) pass through untouched: the polyfill detects which features a document uses, and if the browser supports all of them it does nothing. See [docs/support.md](docs/support.md) for the full support matrix and [docs/comparison.md](docs/comparison.md) for a feature comparison with Paged.js.
+Features the browser already supports natively pass through untouched: the polyfill detects which features a document uses, and if the browser supports all of them it does nothing. In Chromium that covers page sizes, margins, margin boxes, page counters, `:first`/`:left`/`:right`, named pages, forced breaks, and orphans/widows; Firefox supports a smaller set natively (no margin boxes, page counters, or `orphans`/`widows`), so the polyfill covers those there as well. See [docs/support.md](docs/support.md) for the full support matrix and [docs/comparison.md](docs/comparison.md) for a feature comparison with Paged.js.
 
-The polyfill was designed for producing PDFs with [Puppeteer](https://pptr.dev/) but works in any Chromium-based browser, on screen as well as in print.
+The polyfill was designed for producing PDFs with [Puppeteer](https://pptr.dev/) but works in any Chromium-based browser and in Firefox, on screen as well as in print.
 
 ## Installation
 
@@ -83,6 +83,28 @@ await page.pdf({
 await browser.close();
 ```
 
+#### Firefox
+
+Launch with `puppeteer.launch({ browser: "firefox" })` (after `npx puppeteer browsers install firefox`); the polyfill itself works the same. Firefox's `page.pdf()` uses WebDriver BiDi printing, which ignores CSS `@page` sizes, so pass the sheet size explicitly and zero the margins:
+
+```js
+const size = await page.evaluate(async () => {
+	const result = await window.PagedMedia.polyfill();
+	const { sheetWidth, sheetHeight } = result.pages[0].geometry;
+	return { width: sheetWidth / 96, height: sheetHeight / 96 };
+});
+
+await page.pdf({
+	path: "book.pdf",
+	width: `${size.width}in`,
+	height: `${size.height}in`,
+	margin: { top: 0, right: 0, bottom: 0, left: 0 },
+	printBackground: true,
+});
+```
+
+Documents that mix sheet sizes print at a single size in Firefox (Chromium can vary the size per page).
+
 Serve documents over HTTP where possible: external stylesheets are fetched so that unsupported rules can be read, and browsers refuse `fetch()` for `file:` URLs. When a stylesheet cannot be fetched the polyfill falls back to the browser's parsed copy (which drops unsupported rules) and reports it in `result.warnings`. Inline `<style>` elements always work.
 
 A ready-made script is included in the repository: `node scripts/render-pdf.js input.html output.pdf`.
@@ -138,11 +160,13 @@ The CSS parser and the `@page` cascade are also exported (`parseStylesheet`, `tr
 - `footnote-display: compact` is treated as `block`.
 - PDF bookmarks (`bookmark-level` and friends) cannot be produced from the DOM; use Puppeteer's `outline: true` option instead.
 - `@page :first` with a page name (`@page chapter:first`) matches the first page of each group of consecutive `chapter` pages; a bare `:first` matches only the first page of the document. `:nth()` counts within the page group when a name is given, otherwise within the document.
+- In Firefox, the `page-orientation` descriptor is ignored (Firefox does not implement it), and Puppeteer PDFs use a single sheet size for the whole document (see the Firefox section above).
 
 ## Development
 
 ```shell
-npm test          # unit tests (Node) and integration tests (Puppeteer)
+npm test          # unit tests (Node) and integration tests (Puppeteer Chrome)
+npm run test:firefox    # the same suite in Firefox (npx puppeteer browsers install firefox first)
 npm run build     # library (dist/index.js) and browser bundle (dist/paged-media.js)
 npm run lint      # ESLint and TypeScript
 npm run probe:support   # regenerate the native support probe (docs/support.md)
@@ -157,7 +181,7 @@ Visual regression tests (`tests/screenshots.test.ts`) screenshot every page of e
 npm run test:screenshots:update
 ```
 
-Fixtures use bundled DejaVu fonts (`tests/fixtures/fonts.css`) rather than system fonts, so rendering is the same on every machine; baselines are still recorded per platform because rasterization differs between operating systems, and on CI the screenshot tests are skipped on platforms without baselines.
+Fixtures use bundled DejaVu fonts (`tests/fixtures/fonts.css`) rather than system fonts, so rendering is the same on every machine; baselines are still recorded per platform (and per browser: Firefox baselines live in `<platform>-firefox/`) because rasterization differs between operating systems and browsers, and on CI the screenshot tests are skipped on platforms without baselines.
 
 ## Acknowledgements
 

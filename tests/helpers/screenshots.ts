@@ -26,6 +26,7 @@ import { platform } from "node:process";
 import type { Page } from "puppeteer";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
+import { browserName } from "./browser.js";
 
 //-----------------------------------------------------------------------------
 // Types
@@ -60,6 +61,13 @@ const TOLERANCE = 0.001;
 const UPDATE = process.env.UPDATE_SCREENSHOTS === "1";
 const CI = !!process.env.CI;
 
+/**
+ * Baselines are also browser-specific; the Chrome directories keep their
+ * original platform-only names.
+ */
+const VARIANT =
+	browserName === "chrome" ? platform : `${platform}-${browserName}`;
+
 //-----------------------------------------------------------------------------
 // Helpers
 //-----------------------------------------------------------------------------
@@ -69,7 +77,7 @@ const CI = !!process.env.CI;
  * @returns True if screenshot tests can run.
  */
 export function hasBaselines(): boolean {
-	return existsSync(join(BASELINE_DIR, platform));
+	return existsSync(join(BASELINE_DIR, VARIANT));
 }
 
 /**
@@ -123,9 +131,9 @@ export async function comparePageScreenshots(
 	page: Page,
 	name: string,
 ): Promise<ScreenshotComparison[]> {
-	const currentDir = join(CURRENT_DIR, platform);
-	const baselineDir = join(BASELINE_DIR, platform);
-	const diffDir = join(DIFF_DIR, platform);
+	const currentDir = join(CURRENT_DIR, VARIANT);
+	const baselineDir = join(BASELINE_DIR, VARIANT);
+	const diffDir = join(DIFF_DIR, VARIANT);
 	await mkdir(currentDir, { recursive: true });
 	await mkdir(baselineDir, { recursive: true });
 	await mkdir(diffDir, { recursive: true });

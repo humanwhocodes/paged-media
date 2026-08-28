@@ -36,6 +36,7 @@ import {
 import { BASE_STYLES } from "./styles.js";
 import {
 	type TransformResult,
+	CUSTOM_PROPERTIES,
 	customPropertyRegistrations,
 	transformStylesheets,
 } from "./transform.js";
@@ -524,6 +525,12 @@ body {
 		source.append(doc.body.firstChild);
 	}
 
+	// Firefox's parser drops declarations it does not implement (e.g.
+	// `break-before: verso`, `orphans`) from inline styles too; the raw
+	// attribute text is the only place they survive, so they are mirrored
+	// into the same custom properties the stylesheet transform writes.
+	mirrorInlineStyles(source);
+
 	const container = doc.createElement("div");
 	container.className = "pm-pages";
 	doc.body.append(source, container);
@@ -710,6 +717,60 @@ body {
 		new CustomEvent("pagedmedia:rendered", { detail: { pages } }),
 	);
 	return pages;
+}
+
+/**
+ * Inline-style properties whose declarations are mirrored into custom
+ * properties because Firefox's parser drops values it does not implement.
+ */
+const INLINE_MIRRORS = new Map<string, string>([
+	["break-before", CUSTOM_PROPERTIES.breakBefore],
+	["page-break-before", CUSTOM_PROPERTIES.breakBefore],
+	["break-after", CUSTOM_PROPERTIES.breakAfter],
+	["page-break-after", CUSTOM_PROPERTIES.breakAfter],
+	["orphans", CUSTOM_PROPERTIES.orphans],
+	["widows", CUSTOM_PROPERTIES.widows],
+]);
+
+/**
+ * Mirrors the paged media declarations found in `style` attributes into
+ * custom properties, reading the raw attribute text because dropped
+ * declarations are not represented in the CSSOM.
+ * @param root The container whose elements are processed.
+ */
+function mirrorInlineStyles(root: Element): void {
+	for (const element of root.querySelectorAll<HTMLElement>("[style]")) {
+		const text = element.getAttribute("style");
+
+		if (!text || typeof element.style?.setProperty !== "function") {
+			continue;
+		}
+
+		for (const part of text.split(";")) {
+			const colon = part.indexOf(":");
+
+			if (colon === -1) {
+				continue;
+			}
+
+			const custom = INLINE_MIRRORS.get(
+				part.slice(0, colon).trim().toLowerCase(),
+			);
+
+			if (!custom) {
+				continue;
+			}
+
+			const value = part
+				.slice(colon + 1)
+				.replace(/!\s*important\s*$/i, "")
+				.trim();
+
+			if (value) {
+				element.style.setProperty(custom, value);
+			}
+		}
+	}
 }
 
 /** Boxes whose `::before` would be wrapped in anonymous boxes or become an item. */

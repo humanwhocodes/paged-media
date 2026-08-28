@@ -16,7 +16,10 @@ export interface SupportReport {
 	pageSize: boolean;
 	/** `@page :first`, `:left`, `:right` */
 	pageSelectors: boolean;
-	/** `@page :blank` */
+	/**
+	 * `@page :blank`. Firefox parses the selector without implementing the
+	 * rendering, so it cannot be detected by parsing; assumed unsupported.
+	 */
 	blankPages: boolean;
 	/** `@page :nth()` */
 	nthPages: boolean;
@@ -50,6 +53,8 @@ export interface SupportReport {
 	 * Cannot be feature-detected at runtime; assumed unsupported.
 	 */
 	leftRightBreaks: boolean;
+	/** `orphans` and `widows` (not implemented by Firefox). */
+	orphansWidows: boolean;
 	/** `bookmark-level` and friends. */
 	bookmarks: boolean;
 }
@@ -107,7 +112,7 @@ export function detectSupport(): SupportReport {
 		pageSelectors:
 			pageRuleKeeps("@page :first { margin: 1in; }", ":first") &&
 			pageRuleKeeps("@page :left { margin: 1in; }", ":left"),
-		blankPages: pageRuleKeeps("@page :blank { margin: 1in; }", ":blank"),
+		blankPages: false,
 		nthPages: pageRuleKeeps("@page :nth(2) { margin: 1in; }", ":nth"),
 		namedPages:
 			supports("page", "chapter") &&
@@ -136,6 +141,7 @@ export function detectSupport(): SupportReport {
 		crossReferences: false,
 		leaders: supports("content", "leader(dotted)"),
 		leftRightBreaks: false,
+		orphansWidows: supports("orphans", "2") && supports("widows", "2"),
 		bookmarks: supports("bookmark-level", "1"),
 	};
 }

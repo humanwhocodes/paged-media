@@ -520,12 +520,44 @@ export class Chunker {
 		);
 	}
 
+	/**
+	 * Reads a break property, preferring the custom property mirror written
+	 * by the stylesheet transform: Firefox's parser drops break values it
+	 * does not implement (left, right, recto, verso), so the native
+	 * computed value alone cannot be trusted.
+	 * @param element The element.
+	 * @param property The native property ("breakBefore" or "breakAfter").
+	 * @param custom The mirroring custom property.
+	 * @returns The break value.
+	 */
+	#breakValue(
+		element: Element,
+		property: "breakBefore" | "breakAfter",
+		custom: string,
+	): string {
+		const style = this.#style(element);
+		const mirrored = style.getPropertyValue(custom).trim();
+		return mirrored !== "" ? mirrored : style[property];
+	}
+
 	#breakBefore(element: Element): ForcedBreak | null {
-		return normalizeBreak(this.#style(element).breakBefore);
+		return normalizeBreak(
+			this.#breakValue(
+				element,
+				"breakBefore",
+				CUSTOM_PROPERTIES.breakBefore,
+			),
+		);
 	}
 
 	#breakAfter(element: Element): ForcedBreak | null {
-		return normalizeBreak(this.#style(element).breakAfter);
+		return normalizeBreak(
+			this.#breakValue(
+				element,
+				"breakAfter",
+				CUSTOM_PROPERTIES.breakAfter,
+			),
+		);
 	}
 
 	#pageNameFor(node: Node): string | undefined {
@@ -1732,9 +1764,25 @@ export class Chunker {
 			return point;
 		}
 
+		// Firefox does not implement orphans/widows, so the custom property
+		// mirrors written by the stylesheet transform are read first.
 		const style = this.#style(block);
-		const orphans = Math.max(1, parseInt(style.orphans, 10) || 2);
-		const widows = Math.max(1, parseInt(style.widows, 10) || 2);
+		const orphans = Math.max(
+			1,
+			parseInt(
+				style.getPropertyValue(CUSTOM_PROPERTIES.orphans) ||
+					style.orphans,
+				10,
+			) || 2,
+		);
+		const widows = Math.max(
+			1,
+			parseInt(
+				style.getPropertyValue(CUSTOM_PROPERTIES.widows) ||
+					style.widows,
+				10,
+			) || 2,
+		);
 		const before = this.#linesBefore(block, point);
 		const after = this.#linesAfter(block, point);
 
@@ -1824,10 +1872,22 @@ export class Chunker {
 				break;
 			}
 
-			const avoidBefore = isAvoid(this.#style(node).breakBefore);
+			const avoidBefore = isAvoid(
+				this.#breakValue(
+					node,
+					"breakBefore",
+					CUSTOM_PROPERTIES.breakBefore,
+				),
+			);
 			const avoidAfter =
 				isElement(previous) &&
-				isAvoid(this.#style(previous).breakAfter);
+				isAvoid(
+					this.#breakValue(
+						previous,
+						"breakAfter",
+						CUSTOM_PROPERTIES.breakAfter,
+					),
+				);
 
 			if (
 				(avoidBefore || avoidAfter) &&

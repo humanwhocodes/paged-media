@@ -70,6 +70,10 @@ export const CUSTOM_PROPERTIES = {
 	running: "--pm-running",
 	footnoteDisplay: "--pm-footnote-display",
 	footnotePolicy: "--pm-footnote-policy",
+	breakBefore: "--pm-break-before",
+	breakAfter: "--pm-break-after",
+	orphans: "--pm-orphans",
+	widows: "--pm-widows",
 	contentPrefix: "--pm-content-",
 	leaderWidthPrefix: "--pm-leader-width-",
 } as const;
@@ -398,7 +402,36 @@ class Transformer {
 					this.features.add("leftRightBreaks");
 				}
 
-				return [declaration];
+				// Firefox's parser drops break values it does not implement
+				// (left, right, recto, verso), so every declaration is
+				// mirrored into a custom property that the layout engine
+				// reads before the native computed value.
+				return [
+					declaration,
+					{
+						...declaration,
+						name: name.endsWith("before")
+							? CUSTOM_PROPERTIES.breakBefore
+							: CUSTOM_PROPERTIES.breakAfter,
+					},
+				];
+
+			case "orphans":
+			case "widows":
+				this.features.add("orphansWidows");
+
+				// Firefox does not implement orphans/widows; mirrored like
+				// the break properties above.
+				return [
+					declaration,
+					{
+						...declaration,
+						name:
+							name === "orphans"
+								? CUSTOM_PROPERTIES.orphans
+								: CUSTOM_PROPERTIES.widows,
+					},
+				];
 
 			case "page":
 				if (!isIdent(first, "auto")) {
@@ -551,9 +584,19 @@ export function customPropertyRegistrations(): string {
 		CUSTOM_PROPERTIES.running,
 		CUSTOM_PROPERTIES.footnoteDisplay,
 		CUSTOM_PROPERTIES.footnotePolicy,
+		CUSTOM_PROPERTIES.breakBefore,
+		CUSTOM_PROPERTIES.breakAfter,
 	];
+	// orphans and widows are inherited properties, so their mirrors must
+	// inherit too.
+	const inherited = [CUSTOM_PROPERTIES.orphans, CUSTOM_PROPERTIES.widows];
 
-	return names
-		.map(name => `@property ${name} { syntax: "*"; inherits: false; }`)
-		.join("\n");
+	return [
+		...names.map(
+			name => `@property ${name} { syntax: "*"; inherits: false; }`,
+		),
+		...inherited.map(
+			name => `@property ${name} { syntax: "*"; inherits: true; }`,
+		),
+	].join("\n");
 }

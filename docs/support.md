@@ -48,6 +48,33 @@ Last probed: Puppeteer 25.9.0 / Chrome 152.0.7977.54 (2026-08-26).
 | `bookmark-level`, `bookmark-label`, `bookmark-state`                                        | ❌    | ❌     | ❌ Not possible from the DOM; use Puppeteer's `outline` option |
 | `footnote-display: compact`                                                                 | ❌    | ❌     | Treated as `block`                                             |
 
+## Firefox
+
+The polyfill also runs in Firefox (tested with the Firefox build shipped with
+Puppeteer, via WebDriver BiDi). The runtime detection in `detectSupport()`
+adapts automatically; the differences from Chromium (last checked: Firefox
+154, 2026-08-28):
+
+- Natively supported and passed through: `@page { size }` and margins,
+  `:first`/`:left`/`:right`, named pages, and forced breaks
+  (`page`, `left`, `right`).
+- Additionally polyfilled in Firefox: the 16 page-margin boxes,
+  `counter(page)`/`counter(pages)` in margin boxes, and `orphans`/`widows`
+  (Firefox does not implement the properties, so the stylesheet transform
+  mirrors them into `--pm-orphans`/`--pm-widows`).
+- Firefox's parser drops `break-before`/`break-after: recto | verso`
+  (and `orphans`/`widows`) instead of keeping them in the CSSOM, so those
+  declarations are mirrored into custom properties by the transform, and
+  read back from the raw `style` attribute text for inline styles.
+- `@page :blank` parses in Firefox without being rendered, so the polyfill
+  assumes `:blank` is unsupported everywhere rather than trusting a parse
+  probe.
+- The `page-orientation` descriptor is not implemented; Firefox ignores it
+  in the polyfill's generated print stylesheet.
+- Puppeteer's `page.pdf()` in Firefox ignores CSS `@page` sizes: pass
+  explicit `width`/`height` and zero `margin` (see the README), and
+  documents that mix sheet sizes print at the first size on every page.
+
 ## How the Probe Works
 
 `scripts/probe-support.js` launches Chrome via Puppeteer and:
