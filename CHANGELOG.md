@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/humanwhocodes/paged-media/compare/paged-media-v0.1.1...paged-media-v0.2.0) (2026-08-28)
+
+
+### Features
+
+* Add Firefox support ([ad0ba0d](https://github.com/humanwhocodes/paged-media/commit/ad0ba0d8fe90b62b2edc4912a308677d4aa6a2e4))
+
 ## [0.1.1](https://github.com/humanwhocodes/paged-media/compare/paged-media-v0.1.0...paged-media-v0.1.1) (2026-08-27)
 
 
